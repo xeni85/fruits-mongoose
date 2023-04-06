@@ -1,11 +1,16 @@
 const express = require('express');
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+dotenv.config();
+
+
 
 const app = express();
 
 const PORT = process.env.PORT || 3000;
 
-const dotenv = require('dotenv');
-dotenv.config();
+
+
 
 const Fruit = require('./models/fruit');
 app.set('view engine', 'jsx');
@@ -13,10 +18,9 @@ app.engine('jsx', require('express-react-views').createEngine());
 
 
 //---Middleware---
-const mongoose = require('mongoose');
-const Fruit = require('./models/fruit.js');
 
-const uri = process.env.ATLAS_URI;
+
+const uri = process.env.MONGO_URI;
 mongoose.connect(uri, {});
 
 
@@ -25,7 +29,10 @@ mongoose.connect(process.env.MONGO_URI, {
     useUnifiedTopology: true,
     useCreateIndex: true
 });
-
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connection.once('open', ()=> {
+    console.log('connected to mongo');
+});
 
 app.use((req, res, next) => {
     console.log('I run for all routes');
@@ -33,15 +40,6 @@ app.use((req, res, next) => {
 });
 app.use(express.urlencoded({extended: true}));
 
-
-
-
-
-
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
-mongoose.connection.once('open', ()=> {
-    console.log('connected to mongo');
-});
 
 //---Routing---
 app.get('/fruits', (req, res)=>{
@@ -51,10 +49,6 @@ app.get('/fruits', (req, res)=>{
         });
     });
 });
-app.get('/fruits/new', (req, res) => {
-    res.render('New');
-});
-
 
 app.post('/fruits/', (req, res)=>{
     if(req.body.readyToEat === 'on'){ //if checked, req.body.readyToEat is set to 'on'
@@ -63,12 +57,13 @@ app.post('/fruits/', (req, res)=>{
         req.body.readyToEat = false;
     }
     Fruit.create(req.body, (error, createdFruit)=>{
-        res.send(createdFruit);
+        res.redirect('/fruits');
     });
 });
 
-Fruit.create(req.body, (error, createdFruit)=>{
-    res.redirect('/fruits');
+
+app.get('/fruits/new', (req, res) => {
+    res.render('New');
 });
 
 
@@ -77,6 +72,12 @@ app.get('/fruits/:id', (req, res)=>{
         res.render('fruits/Show', {
             fruit:foundFruit
         });
+    });
+});
+
+app.delete('/fruits/:id', (req, res)=>{
+    Fruit.findByIdAndRemove(req.params.id, (err, data)=>{
+        res.redirect('/fruits');//redirect back to fruits index
     });
 });
 
